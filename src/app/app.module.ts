@@ -5,9 +5,15 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { TreeModule } from 'angular-tree-component';
+import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
+
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 
 import { AppRoutingModule } from './app-routing.module';
+
+import { NgbdModalComponent, NgbdModalContent } from './components/home/modal-basic';
+
 
 // NG Translate
 import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
@@ -29,8 +35,11 @@ export function HttpLoaderFactory(http: HttpClient) {
   declarations: [
     AppComponent,
     HomeComponent,
-    WebviewDirective
+    WebviewDirective,
+    NgbdModalContent,
+    NgbdModalComponent
   ],
+  entryComponents: [NgbdModalContent],
   imports: [
     BrowserModule,
     FormsModule,
@@ -42,7 +51,9 @@ export function HttpLoaderFactory(http: HttpClient) {
         useFactory: (HttpLoaderFactory),
         deps: [HttpClient]
       }
-    })
+    }),
+    TreeModule.forRoot(),
+    NgbModule
   ],
   providers: [ElectronService],
   bootstrap: [AppComponent]

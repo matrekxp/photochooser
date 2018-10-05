@@ -1,10 +1,12 @@
 {
-  "productName": "angular-electron",
+  "productName": "PhotoChooser",
   "directories": {
-    "output": "release/"
+    "output": "release/",
+    "buildResources": "build"
   },
     "files": [
         "**/*",
+        "icon.ico",
         "!*.ts",
         "!*.code-workspace",
         "!LICENSE.md",
@@ -17,16 +19,24 @@
         "!_config.yml",
         "!karma.conf.js",
         "!tsconfig.json",
-        "!tslint.json"
+        "!tslint.json",
+      "!node_modules/exiftool-vendored/node_modules/exiftool-vendored.pl/**"
     ],
+  "extraFiles": [
+    {
+      "from": "node_modules/exiftool-vendored/node_modules/exiftool-vendored.pl",
+      "to": "dist",
+      "filter": ["**/*"]
+    }
+  ],
   "win": {
-    "icon": "dist",
+    "icon": "build/icon.ico",
     "target": [
       "portable"
     ]
   },
   "mac": {
-    "icon": "dist",
+    "icon": "build/icon_512_1.png",
     "target": [
       "dmg"
     ]

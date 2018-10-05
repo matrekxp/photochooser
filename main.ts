@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen } from 'electron';
+import { app, BrowserWindow, screen, globalShortcut } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
 
@@ -19,7 +19,11 @@ function createWindow() {
     x: 0,
     y: 0,
     width: size.width,
-    height: size.height
+    height: size.height,
+    webPreferences: {
+      webSecurity: false,
+      nodeIntegrationInWorker: true
+    }
   });
 
   if (serve) {
@@ -42,6 +46,11 @@ function createWindow() {
     // Dereference the window object, usually you would store window
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
+    // Unregister a shortcut.
+    globalShortcut.unregister('CommandOrControl+X');
+
+    // Unregister all shortcuts.
+    globalShortcut.unregisterAll();
     win = null;
   });
 
@@ -53,7 +62,7 @@ try {
 
   // This method will be called when Electron has finished
   // initialization and is ready to create browser windows.
-  // Some APIs can only be used after this event occurs.
+  // Some APIs can only be used after this lastFocusEvent occurs.
   app.on('ready', createWindow);
 
   // Quit when all windows are closed.

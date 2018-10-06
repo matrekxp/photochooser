@@ -12,7 +12,7 @@ import { HttpClientModule, HttpClient } from '@angular/common/http';
 
 import { AppRoutingModule } from './app-routing.module';
 
-import { NgbdModalComponent, NgbdModalContent } from './components/home/modal-basic';
+import { PreActionWarningModalContent } from './components/modals/pre-action-warning';
 
 
 // NG Translate
@@ -36,10 +36,9 @@ export function HttpLoaderFactory(http: HttpClient) {
     AppComponent,
     HomeComponent,
     WebviewDirective,
-    NgbdModalContent,
-    NgbdModalComponent
+    PreActionWarningModalContent
   ],
-  entryComponents: [NgbdModalContent],
+  entryComponents: [PreActionWarningModalContent],
   imports: [
     BrowserModule,
     FormsModule,

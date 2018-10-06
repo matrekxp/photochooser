@@ -5,7 +5,9 @@ import {IActionMapping, ITreeOptions, KEYS, TREE_ACTIONS, TreeComponent, TreeMod
 import * as keyShortcuts from 'electron-localshortcut';
 import {remote} from 'electron';
 import * as storage from 'electron-json-storage/lib/storage';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {winattr} from 'winattr';
+import {PreActionWarningModalContent} from '../modals/pre-action-warning';
 
 // import {exiftool} from 'exiftool-vendored';
 // const exiftool = require('exiftool-vendored').exiftool;
@@ -117,7 +119,7 @@ export class HomeComponent implements OnInit {
   update() {
     const treeModel: TreeModel = this.treeComponent.treeModel;
 
-    console.log("model in update", treeModel);
+    console.log('model in update', treeModel);
 
     const root = treeModel.getFirstRoot();
 
@@ -125,7 +127,7 @@ export class HomeComponent implements OnInit {
     root.expandAll();
   }
 
-  constructor() {
+  constructor(private modalService: NgbModal) {
   }
 
   ngOnInit() {
@@ -136,17 +138,15 @@ export class HomeComponent implements OnInit {
     const currentWindow = remote.getCurrentWindow();
 
     window.addEventListener('keyup', (e) => {
-      if (e.code === "ShiftLeft") {
+      if (e.code === 'ShiftLeft') {
         this.shiftDown = false;
       }
     }, true);
-
     window.addEventListener('keydown', (e) => {
-      if (e.code === "ShiftLeft") {
+      if (e.code === 'ShiftLeft') {
         this.shiftDown = true;
       }
     }, true);
-
 
     keyShortcuts.register(currentWindow, 'Esc', () => {
       this.exitFullScreen();
@@ -189,7 +189,11 @@ export class HomeComponent implements OnInit {
     keyShortcuts.register(currentWindow, '2', () => this.moveToBucket(1));
     keyShortcuts.register(currentWindow, '3', () => this.moveToBucket(2));
 
-    this.buckets = [new Bucket(0,'Dobre', 'success'), new Bucket(1,'Srednie', 'warning'), new Bucket(2,'Zle', 'danger')];
+    this.buckets = [
+      new Bucket(0, 'Dobre', 'success'),
+      new Bucket(1, 'Srednie', 'warning'),
+      new Bucket(2, 'Zle', 'danger')
+    ];
 
     storage.has('settings', (error, hasKey) => {
       if (error) {
@@ -312,7 +316,7 @@ export class HomeComponent implements OnInit {
     const flattenNodes: Array<File> = [];
     this.flatten(this.nodes, flattenNodes);
 
-    console.log("flatten photos", flattenNodes);
+    console.log('flatten photos', flattenNodes);
 
     this.buckets.forEach(b => {
       const photos = b.clear();
@@ -384,7 +388,7 @@ export class HomeComponent implements OnInit {
   private moveToBucket(bucketIndex: number) {
     const treeModel: TreeModel = this.treeComponent.treeModel;
     const activeNodes = treeModel.activeNodes;
-    console.log("activeNodes", activeNodes);
+    console.log('activeNodes', activeNodes);
     // const focusedNode = treeModel.getFocusedNode();
     // const currentPhoto = focusedNode.data;
 
@@ -428,6 +432,33 @@ export class HomeComponent implements OnInit {
   }
 
   copy() {
+    const warnings = this.checkBeforeAction();
+    if (warnings.length > 0) {
+      const modalRef = this.modalService.open(PreActionWarningModalContent, { centered: true });
+      modalRef.componentInstance.name = 'Copy';
+      modalRef.componentInstance.sourceDir = this.sourcePath;
+      modalRef.componentInstance.photos = warnings[0].files;
+      modalRef.result.then((result) => {
+        console.log(`Closed with: ${result}`);
+
+        if (result === 'continue') {
+          this.performCopy();
+        }
+
+        if (result === 'clean_buckets') {
+          for (const photo of warnings[0].files) {
+            photo.bucket.remove(photo);
+          }
+        }
+      }, (reason) => {
+        console.log(`Dismissed ${reason}`);
+      });
+    } else {
+      this.performCopy();
+    }
+  }
+
+  performCopy() {
     this.actionInProgress = new Action('Copying in progress', 0);
 
     const copyLoop = (action, bucket, index) => {
@@ -450,7 +481,57 @@ export class HomeComponent implements OnInit {
     setTimeout(copyLoop, 100, this.actionInProgress, this.activeBucket, 0);
   }
 
+  private checkBeforeAction() {
+    const warnings: Array<PreActionWarning> = [];
+
+    if (this.activeBucket.countDirs() > 0) {
+      const overlapPhotos: Array<File> = [];
+      const dirs = this.activeBucket.dirs();
+      for (const dir of dirs) {
+        const flatten: Array<File> = [];
+        this.flatten(dir.children, flatten);
+
+        const argArray = flatten.filter(f => f.bucket != null && f.bucket !== this.activeBucket);
+
+        overlapPhotos.push.apply(overlapPhotos, argArray);
+      }
+
+      if (overlapPhotos.length > 0) {
+        warnings.push(new PreActionWarning(overlapPhotos));
+      }
+    }
+
+    return warnings;
+  }
+
   move() {
+    const warnings = this.checkBeforeAction();
+    if (warnings.length > 0) {
+      const modalRef = this.modalService.open(PreActionWarningModalContent, { centered: true });
+      modalRef.componentInstance.name = 'Move';
+      modalRef.componentInstance.sourceDir = this.sourcePath;
+      modalRef.componentInstance.photos = warnings[0].files;
+      modalRef.result.then((result) => {
+        console.log(`Closed with: ${result}`);
+
+        if (result === 'continue') {
+          this.performMove();
+        }
+
+        if (result === 'clean_buckets') {
+          for (const photo of warnings[0].files) {
+            photo.bucket.remove(photo);
+          }
+        }
+      }, (reason) => {
+        console.log(`Dismissed ${reason}`);
+      });
+    } else {
+      this.performMove();
+    }
+  }
+
+  performMove() {
     this.actionInProgress = new Action('Moving in progress', 0);
 
     const moveLoop = (action, bucket, index) => {
@@ -485,7 +566,7 @@ export class HomeComponent implements OnInit {
     const flatten = [];
     this.flatten(this.nodes, flatten);
 
-    console.log('flatten', flatten);
+    // console.log('flatten', flatten);
 
     return flatten.filter(p => p.isFile).some(p => p.bucket === null || p.bucket === undefined);
   }
@@ -549,6 +630,7 @@ class Bucket {
   remove(photo: File) {
     const index = this.photos.indexOf(photo, 0);
     if (index > -1) {
+      this.photos[index].bucket = null;
       this.photos.splice(index, 1);
     }
   }
@@ -574,6 +656,10 @@ class Bucket {
 
   countDirs() {
     return this.photos.filter(p => !p.isFile).length;
+  }
+
+  dirs() {
+    return this.photos.filter(p => !p.isFile);
   }
 
   count() {
@@ -602,5 +688,11 @@ class Settings {
   constructor(sourcePath: string, destinationPath: string) {
     this.sourcePath = sourcePath;
     this.destinationPath = destinationPath;
+  }
+}
+
+class PreActionWarning {
+  constructor(public files: Array<File>) {
+
   }
 }

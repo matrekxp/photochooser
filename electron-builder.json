@@ -19,24 +19,16 @@
         "!_config.yml",
         "!karma.conf.js",
         "!tsconfig.json",
-        "!tslint.json",
-      "!node_modules/exiftool-vendored/node_modules/exiftool-vendored.pl/**"
+      "!tslint.json"
     ],
-  "extraFiles": [
-    {
-      "from": "node_modules/exiftool-vendored/node_modules/exiftool-vendored.pl",
-      "to": "dist",
-      "filter": ["**/*"]
-    }
-  ],
   "win": {
-    "icon": "build/icon.ico",
+    "icon": "build/icon_win.png",
     "target": [
       "portable"
     ]
   },
   "mac": {
-    "icon": "build/icon_512_1.png",
+    "icon": "build/icon_mac.png",
     "target": [
       "dmg"
     ]

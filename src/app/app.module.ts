@@ -8,6 +8,12 @@ import { FormsModule } from '@angular/forms';
 import { TreeModule } from 'angular-tree-component';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
 
+import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
+import {MatChipsModule} from '@angular/material/chips';
+import {MatIconModule} from '@angular/material';
+import {MatButtonModule} from '@angular/material/button';
+import {MatFormFieldModule} from '@angular/material/form-field';
+
 import { HttpClientModule, HttpClient } from '@angular/common/http';
 
 import { AppRoutingModule } from './app-routing.module';
@@ -23,8 +29,13 @@ import { ElectronService } from './providers/electron.service';
 
 import { WebviewDirective } from './directives/webview.directive';
 
+
+
 import { AppComponent } from './app.component';
 import { HomeComponent } from './components/home/home.component';
+
+
+
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient) {
@@ -39,11 +50,17 @@ export function HttpLoaderFactory(http: HttpClient) {
     PreActionWarningModalContent
   ],
   entryComponents: [PreActionWarningModalContent],
+  exports: [MatFormFieldModule, MatButtonModule, MatIconModule, MatChipsModule],
   imports: [
+    MatFormFieldModule,
+    MatChipsModule,
+    MatIconModule,
+    MatButtonModule,
     BrowserModule,
     FormsModule,
     HttpClientModule,
     AppRoutingModule,
+    BrowserAnimationsModule,
     TranslateModule.forRoot({
       loader: {
         provide: TranslateLoader,

@@ -1,4 +1,5 @@
-import {Component, HostListener, OnInit, ViewChild} from '@angular/core';
+import {Component, HostListener, OnInit, ViewChild, ApplicationRef} from '@angular/core';
+import {COMMA, ENTER} from '@angular/cdk/keycodes';
 import * as fs from 'fs';
 import * as fse from 'fs-extra';
 import {IActionMapping, ITreeOptions, KEYS, TREE_ACTIONS, TreeComponent, TreeModel} from 'angular-tree-component';
@@ -6,8 +7,33 @@ import * as keyShortcuts from 'electron-localshortcut';
 import {remote} from 'electron';
 import * as storage from 'electron-json-storage/lib/storage';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
-import {winattr} from 'winattr';
+// import {winattr} from 'winattr';
 import {PreActionWarningModalContent} from '../modals/pre-action-warning';
+// const fswin=require('fswin');
+import * as path from 'path';
+
+import { AppConfig } from '../../../environments/environment';
+import {MatChipInputEvent} from '@angular/material';
+
+const app = remote.app;
+// app executablePath: String;
+
+
+
+
+const child = require('child_process').execFile;
+// const executablePath = 'C:\\Users\\Mateusz\\Desktop\\exiftool.exe';
+// const executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+// const params = ['C:\\Users\\Mateusz\\Desktop\\kopiowanie\\Hydrangeas.jpg'];
+// const params = ['-Keywords=me', 'C:\\Users\\Mateusz\\Desktop\\kopiowanie\\Hydrangeas.jpg'];
+// child(executablePath, params, function(err, data) {
+//   if (err) {
+//     console.error(err);
+//     return;
+//   }
+//
+//   console.log(data.toString());
+// });
 
 // import {exiftool} from 'exiftool-vendored';
 // const exiftool = require('exiftool-vendored').exiftool;
@@ -30,11 +56,14 @@ export class HomeComponent implements OnInit {
   activeBucket: Bucket;
   actionInProgress: Action;
   alert: IAlert = HomeComponent.EMPTY_ALERT;
+  editableTags = ['Keywords'];
+  readonly separatorKeysCodes: number[] = [ENTER, COMMA];
 
   sourcePath = '/Users/mskalski/dev/my_projects/PhotoViewer/photo-viewer/src/main/resources/';
   destinationPath = '/Users/mskalski/Desktop';
   nodes: Array<File> = [];
   photoPath = '';
+  attributes: Array<FileAttribute> = [];
   screenHeight;
 
   shiftDown = false;
@@ -86,14 +115,116 @@ export class HomeComponent implements OnInit {
     const isWin = process.platform === 'win32';
     if (isWin) {
       console.log('I am windows');
-      winattr.get(this.photoPath, function(err, attrs) {
-        if (err == null) {
-          console.log('Photo attributes', attrs);
-        } else {
-          console.log('Unable to load photo attributes', err);
-        }
+      // winattr.get(this.photoPath, function(err, attrs) {
+      //   if (err == null) {
+      //     console.log('Photo attributes', attrs);
+      //   } else {
+      //     console.log('Unable to load photo attributes', err);
+      //   }
+      // });
+      // const result = fswin.getAttributesSync(this.photoPath);
+      // if (result) {
+      //   for (const n of result) {
+      //     console.log(n + ': ' + result[n]);
+      //   }
+      // } else {
+      //   console.log(this.photoPath + ' is unaccessible.');
+      // }
+
+      // const params = ['C:\\Users\\Mateusz\\Desktop\\kopiowanie\\Hydrangeas.jpg']
+
+      console.log('activate file', $event.node.data.filePath.replace(/\//g, '\\'));
+      const opt = ['-Keywords', '-ImageSize' , $event.node.data.filePath.replace(/\//g, '\\')];
+      console.log('options', opt);
+
+      let executablePath: String;
+      if (AppConfig.production) {
+        executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+      } else {
+        executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
+      }
+
+      child(executablePath, opt, (err, data) => {
+       if (err) {
+        console.error(err);
+        return;
+       }
+
+       const lines = data.toString().match(/[^\r\n]+/g);
+       this.attributes = lines.map(l => {
+         const attr = l.split(':');
+         const name = attr[0];
+         let value = attr[1];
+         const isEditable = this.editableTags.some(a => name.startsWith(a));
+         const isMultiValue = isEditable;
+
+         if (isMultiValue) {
+           value = value.split(',');
+         }
+
+         return new FileAttribute(name, value, isEditable, isEditable);
+       });
+
+       if (this.attributes.findIndex(a => a.name.startsWith('Keywords')) < 0) {
+         this.attributes.push(new FileAttribute('Keywords', [], true, true));
+       }
+
+       // let index = this.attributes.findIndex(a => a.includes('Keywords'));
+       // if (index > -1) {
+       //   this.attributes.splice(index, 1);
+       // }
+
+        console.log(data.toString());
+        this.appRef.tick();
       });
     }
+  }
+
+  updateAttribute(attribute) {
+    const opt = [`-${attribute.name}=${attribute.value.map(v => v.trim()).join(', ')}`,
+      this.photoPath.replace(/file:\/\/\//g, '')];
+    console.log('options', opt);
+
+    let executablePath: String;
+    if (AppConfig.production) {
+      executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+    } else {
+      executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
+    }
+
+    child(executablePath, opt, (err, data) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+
+      console.log(data.toString());
+    });
+  }
+
+  addAttributeValue(attribute: FileAttribute, event: MatChipInputEvent): void {
+    const input = event.input;
+    const value = event.value;
+
+    // Add our fruit
+    if ((value || '').trim()) {
+      attribute.value.push(value.trim());
+    }
+
+    // Reset the input value
+    if (input) {
+      input.value = '';
+    }
+  }
+
+  removeAttributeValue(attribute: FileAttribute, value: string) {
+    console.log('usuwam wartosc', attribute, value);
+    const index = attribute.value.indexOf(value);
+
+    if (index >= 0) {
+      attribute.value.splice(index, 1);
+    }
+    this.appRef.tick();
   }
 
   onDeactivate = $event => {
@@ -127,7 +258,7 @@ export class HomeComponent implements OnInit {
     root.expandAll();
   }
 
-  constructor(private modalService: NgbModal) {
+  constructor(private modalService: NgbModal, private appRef: ApplicationRef) {
   }
 
   ngOnInit() {
@@ -151,7 +282,8 @@ export class HomeComponent implements OnInit {
     keyShortcuts.register(currentWindow, 'Esc', () => {
       this.exitFullScreen();
     });
-    keyShortcuts.register(currentWindow, 'Enter', () => {
+    keyShortcuts.register(currentWindow, 'Shift+' +
+      'Enter', () => {
       this.enterFullScreen();
     });
     keyShortcuts.register(currentWindow, 'Up', () => this.up());
@@ -395,13 +527,13 @@ export class HomeComponent implements OnInit {
     if (activeNodes && activeNodes.length > 0) {
       activeNodes.forEach(a => {
         const photo = a.data;
-        for (const bucket of this.buckets) {
-          bucket.remove(photo);
-        }
 
         if (photo.bucket === this.buckets[bucketIndex]) {
-          photo.bucket = null;
+          this.buckets[bucketIndex].remove(photo);
         } else {
+          for (const bucket of this.buckets) {
+            bucket.remove(photo);
+          }
           this.buckets[bucketIndex].add(photo);
         }
       });
@@ -679,6 +811,15 @@ class Action {
     this.name = name;
     this.progress = progress;
   }
+}
+
+class FileAttribute {
+  // name: string;
+  // value: string;
+  // multivalue: boolean;
+  // editable: boolean;
+
+  constructor(public name: string, public value, public multivalue: boolean, public editable: boolean) {}
 }
 
 class Settings {

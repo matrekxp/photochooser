@@ -1,4 +1,4 @@
-import {Component, HostListener, OnInit, ViewChild, ApplicationRef} from '@angular/core';
+import {ApplicationRef, Component, HostListener, OnInit, ViewChild} from '@angular/core';
 import {COMMA, ENTER} from '@angular/cdk/keycodes';
 import * as fs from 'fs';
 import * as fse from 'fs-extra';
@@ -7,36 +7,15 @@ import * as keyShortcuts from 'electron-localshortcut';
 import {remote} from 'electron';
 import * as storage from 'electron-json-storage/lib/storage';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
-// import {winattr} from 'winattr';
 import {PreActionWarningModalContent} from '../modals/pre-action-warning';
-// const fswin=require('fswin');
+import {TagsModalContent} from '../modals/tags';
 import * as path from 'path';
 
-import { AppConfig } from '../../../environments/environment';
+import {AppConfig} from '../../../environments/environment';
 import {MatChipInputEvent} from '@angular/material';
 
 const app = remote.app;
-// app executablePath: String;
-
-
-
-
 const child = require('child_process').execFile;
-// const executablePath = 'C:\\Users\\Mateusz\\Desktop\\exiftool.exe';
-// const executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
-// const params = ['C:\\Users\\Mateusz\\Desktop\\kopiowanie\\Hydrangeas.jpg'];
-// const params = ['-Keywords=me', 'C:\\Users\\Mateusz\\Desktop\\kopiowanie\\Hydrangeas.jpg'];
-// child(executablePath, params, function(err, data) {
-//   if (err) {
-//     console.error(err);
-//     return;
-//   }
-//
-//   console.log(data.toString());
-// });
-
-// import {exiftool} from 'exiftool-vendored';
-// const exiftool = require('exiftool-vendored').exiftool;
 
 @Component({
   selector: 'app-home',
@@ -63,12 +42,16 @@ export class HomeComponent implements OnInit {
   destinationPath = '/Users/mskalski/Desktop';
   nodes: Array<File> = [];
   photoPath = '';
+  photo: File;
   attributes: Array<FileAttribute> = [];
   screenHeight;
 
   shiftDown = false;
   showBucketMode = false;
   fullScreenMode = false;
+  reachedEnd = false;
+  canGo: boolean = true;
+  useDestination = 'no';
 
   actionMapping: IActionMapping = {
     mouse: {
@@ -95,95 +78,35 @@ export class HomeComponent implements OnInit {
     }
   };
   options: ITreeOptions = {
-    actionMapping: this.actionMapping
+    actionMapping: this.actionMapping,
+    useVirtualScroll: true,
+    nodeHeight: 22
   };
 
   lastFocusEvent: any;
 
+  currentPhoto: File;
+
   onActivate = ($event) => {
-    // console.log("activate", $event);
-    this.photoPath = 'file:///' + $event.node.data.filePath;
-    // exiftool
-    //   .read('/Users/mskalski/Downloads/fotki/09_15_27.jpg')
-    //   .then((tags /*: Tags */) =>
-    //     console.log(tags, tags)
-        // console.log(
-        //   `Make: ${tags.Make}, Model: ${tags.Model}, Errors: ${tags.errors}`
-        // )
-      // )
-      // .catch(err => console.error("Something terrible happened: ", err));
-    const isWin = process.platform === 'win32';
-    if (isWin) {
-      console.log('I am windows');
-      // winattr.get(this.photoPath, function(err, attrs) {
-      //   if (err == null) {
-      //     console.log('Photo attributes', attrs);
-      //   } else {
-      //     console.log('Unable to load photo attributes', err);
-      //   }
-      // });
-      // const result = fswin.getAttributesSync(this.photoPath);
-      // if (result) {
-      //   for (const n of result) {
-      //     console.log(n + ': ' + result[n]);
-      //   }
-      // } else {
-      //   console.log(this.photoPath + ' is unaccessible.');
-      // }
+    this.currentPhoto = $event.node.data;
 
-      // const params = ['C:\\Users\\Mateusz\\Desktop\\kopiowanie\\Hydrangeas.jpg']
+    setTimeout(() => {
+      if (this.currentPhoto.filePath === $event.node.data.filePath) {
+        this.photo = this.currentPhoto;
+        this.photoPath = 'file:///' + $event.node.data.filePath;
 
-      console.log('activate file', $event.node.data.filePath.replace(/\//g, '\\'));
-      const opt = ['-Keywords', '-ImageSize' , $event.node.data.filePath.replace(/\//g, '\\')];
-      console.log('options', opt);
+        if (process.platform === 'win32') {
+          if (this.photo.isFile) {
+            this.readTags($event.node.data.filePath);
+          }
+        }
 
-      let executablePath: String;
-      if (AppConfig.production) {
-        executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
-      } else {
-        executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
       }
-
-      child(executablePath, opt, (err, data) => {
-       if (err) {
-        console.error(err);
-        return;
-       }
-
-       const lines = data.toString().match(/[^\r\n]+/g);
-       this.attributes = lines.map(l => {
-         const attr = l.split(':');
-         const name = attr[0];
-         let value = attr[1];
-         const isEditable = this.editableTags.some(a => name.startsWith(a));
-         const isMultiValue = isEditable;
-
-         if (isMultiValue) {
-           value = value.split(',');
-         }
-
-         return new FileAttribute(name, value, isEditable, isEditable);
-       });
-
-       if (this.attributes.findIndex(a => a.name.startsWith('Keywords')) < 0) {
-         this.attributes.push(new FileAttribute('Keywords', [], true, true));
-       }
-
-       // let index = this.attributes.findIndex(a => a.includes('Keywords'));
-       // if (index > -1) {
-       //   this.attributes.splice(index, 1);
-       // }
-
-        console.log(data.toString());
-        this.appRef.tick();
-      });
-    }
+    }, 350);
   }
 
-  updateAttribute(attribute) {
-    const opt = [`-${attribute.name}=${attribute.value.map(v => v.trim()).join(', ')}`,
-      this.photoPath.replace(/file:\/\/\//g, '')];
-    console.log('options', opt);
+  readTags(photoPath) {
+    const opt = ['-Keywords', '-ImageSize', '-CreateDate', '-FileSize', photoPath.replace(/file:\/\/\//g, '').replace(/\//g, '\\')];
 
     let executablePath: String;
     if (AppConfig.production) {
@@ -198,8 +121,64 @@ export class HomeComponent implements OnInit {
         return;
       }
 
-      console.log(data.toString());
+      const lines = data.toString().match(/[^\r\n]+/g);
+      this.attributes = lines.filter(l => l.startsWith('Keywords')
+        || l.startsWith('Image Size') || l.startsWith('Create Date') || l.startsWith('File Size')).map(l => {
+
+        const name = l.substr(0, l.indexOf(':'));
+
+        let value = l.substr(l.indexOf(':') + 1, name.length);
+        const isEditable = this.editableTags.some(a => name.startsWith(a));
+        const isMultiValue = isEditable;
+
+        if (isMultiValue) {
+          value = value.split(',');
+        }
+
+        return new FileAttribute(name, value, isEditable, isEditable);
+      });
+
+      if (this.attributes.findIndex(a => a.name.startsWith('Keywords')) < 0) {
+        this.attributes.push(new FileAttribute('Keywords', [], true, true));
+      }
+
+      this.appRef.tick();
     });
+  }
+
+  updateAttribute(attribute, photoPath, mode = '=') {
+    let opt = ['-overwrite_original'];
+
+    if (attribute.value.length === 0) {
+      opt = opt.concat('-' + attribute.name + '=');
+    } else {
+      opt = opt.concat(attribute.value.map(v => '-' + attribute.name + mode + v.trim()));
+    }
+    opt = opt.concat(['-m', '-r', photoPath.replace(/file:\/\/\//g, '')]);
+    console.log('options', opt);
+
+    let executablePath: String;
+    if (AppConfig.production) {
+      executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+    } else {
+      executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
+    }
+
+    const promise = new Promise((resolve, reject) => {
+
+      child(executablePath, opt, (err, data) => {
+        if (err) {
+          console.error(err);
+          reject(err);
+          return;
+        }
+
+        console.log(data.toString());
+        resolve();
+      });
+    });
+
+    return promise;
   }
 
   addAttributeValue(attribute: FileAttribute, event: MatChipInputEvent): void {
@@ -228,16 +207,20 @@ export class HomeComponent implements OnInit {
   }
 
   onDeactivate = $event => {
-    // console.log("deactivate", $event);
-    this.photoPath = 'file:///' + $event.node.data.filePath;
+    this.currentPhoto = $event.node.data;
+
+    setTimeout(() => {
+      if (this.currentPhoto.filePath === $event.node.data.filePath) {
+
+        this.photoPath = 'file:///' + $event.node.data.filePath;
+        this.appRef.tick();
+      }
+    }, 350);
   }
 
   onFocus = ($event) => {
-    // console.log('on focus event', $event);
     if (!this.lastFocusEvent || (this.lastFocusEvent.node.data.filePath !== $event.node.data.filePath)) {
       this.lastFocusEvent = $event;
-
-      // console.log('aaa', this.shiftDown);
 
       this.shiftDown
         ? TREE_ACTIONS.TOGGLE_ACTIVE_MULTI($event.treeModel, $event.node, $event)
@@ -249,9 +232,6 @@ export class HomeComponent implements OnInit {
 
   update() {
     const treeModel: TreeModel = this.treeComponent.treeModel;
-
-    console.log('model in update', treeModel);
-
     const root = treeModel.getFirstRoot();
 
     root.focus(true);
@@ -262,10 +242,6 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit() {
-    // exiftool
-    //   .version()
-    //   .then(version => console.log(`We're running ExifTool v${version}`));
-
     const currentWindow = remote.getCurrentWindow();
 
     window.addEventListener('keyup', (e) => {
@@ -317,9 +293,9 @@ export class HomeComponent implements OnInit {
       }
     });
 
-    keyShortcuts.register(currentWindow, '1', () => this.moveToBucket(0));
-    keyShortcuts.register(currentWindow, '2', () => this.moveToBucket(1));
-    keyShortcuts.register(currentWindow, '3', () => this.moveToBucket(2));
+    keyShortcuts.register(currentWindow, 'F1', () => this.moveToBucket(0));
+    keyShortcuts.register(currentWindow, 'F2', () => this.moveToBucket(1));
+    keyShortcuts.register(currentWindow, 'F3', () => this.moveToBucket(2));
 
     this.buckets = [
       new Bucket(0, 'Dobre', 'success'),
@@ -381,20 +357,32 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  up() {
+  up(autoScroll = false) {
+    if (!this.canGo && !autoScroll) {
+      return;
+    }
+    this.canGo = false;
+
+    setTimeout(() => {this.canGo = true;}, 75);
+
     const treeModel: TreeModel = this.treeComponent.treeModel;
     const focusedNode = treeModel.getFocusedNode();
+
+    this.reachedEnd = false;
 
     if (focusedNode) {
       focusedNode.expandAll();
       const previousNode = focusedNode.findPreviousNode();
 
       treeModel.focusPreviousNode();
+
+      this.reachedEnd = !previousNode;
+
       if (previousNode && (
-        (!this.showBucketMode && !previousNode.data.isFile || !previousNode.data.name.endsWith('.jpg')) ||
+        (!this.showBucketMode && !previousNode.data.isFile || !this.isImage(previousNode.data)) ||
         (this.showBucketMode && previousNode.data.bucket !== this.activeBucket)
       )) {
-        this.up();
+        this.up(true);
       }
     } else {
       treeModel.focusPreviousNode();
@@ -402,7 +390,18 @@ export class HomeComponent implements OnInit {
 
   }
 
-  down() {
+  isImage(file: File) {
+    return file.name.endsWith('.jpg') || file.name.endsWith('.JPG');
+  }
+
+  down(autoScroll = false) {
+    if (!this.canGo && !autoScroll) {
+      return;
+    }
+    this.canGo = false;
+
+    setTimeout(() => {this.canGo = true;}, 75);
+
     const treeModel: TreeModel = this.treeComponent.treeModel;
     const focusedNode = treeModel.getFocusedNode();
 
@@ -411,11 +410,13 @@ export class HomeComponent implements OnInit {
       const nextNode = focusedNode.findNextNode();
       treeModel.focusNextNode();
 
+      this.reachedEnd = !nextNode;
+
       if (nextNode && (
         (!this.showBucketMode && !nextNode.data.isFile) ||
         (this.showBucketMode && nextNode.data.bucket !== this.activeBucket)
       )) {
-        this.down();
+        this.down(true);
       }
     } else {
       treeModel.focusNextNode();
@@ -478,22 +479,17 @@ export class HomeComponent implements OnInit {
 
   @HostListener('window:resize', ['$event'])
   onResize() {
-    this.screenHeight = window.innerHeight - 75;
+    this.screenHeight = window.innerHeight - 150;
     console.log('wysokosc:', this.screenHeight);
   }
 
   onSourcePathChanged(event) {
     this.sourcePath = event.target.files[0].path;
-
-    console.log('changed source directory:', this.sourcePath);
-
     this.reload();
   }
 
   onDestinationPathChanged(event) {
     this.destinationPath = event.target.files[0].path;
-
-    console.log('changed destination directory:', this.destinationPath);
   }
 
   private loadFileTree(directoryPath: string): Array<File> {
@@ -512,7 +508,7 @@ export class HomeComponent implements OnInit {
       return file;
     });
 
-    files = files.filter(f => (!f.isFile && f.children.length > 0) || f.name.endsWith('.jpg'));
+    files = files.filter(f => (!f.isFile && f.children.length > 0) || this.isImage(f));
 
     return files;
   }
@@ -600,10 +596,10 @@ export class HomeComponent implements OnInit {
         return;
       }
       fse.copy(bucket.photos[index].filePath, this.destinationPath + '/' + bucket.photos[index].name);
-      action.progress = ((index + 1) / (bucket.count())) * 100;
+      action.progress = (((index + 1) / (bucket.count())) * 100).toFixed(2);
 
       if (index % 10 === 0) {
-        setTimeout(copyLoop, 500, action, bucket, index + 1);
+        setTimeout(copyLoop, 250, action, bucket, index + 1);
       } else {
         setTimeout(copyLoop, 0, action, bucket, index + 1);
       }
@@ -644,8 +640,6 @@ export class HomeComponent implements OnInit {
       modalRef.componentInstance.sourceDir = this.sourcePath;
       modalRef.componentInstance.photos = warnings[0].files;
       modalRef.result.then((result) => {
-        console.log(`Closed with: ${result}`);
-
         if (result === 'continue') {
           this.performMove();
         }
@@ -678,9 +672,9 @@ export class HomeComponent implements OnInit {
         const destinationPhotoPath = this.destinationPath + '/' + bucket.photos[index].name;
         console.log('moving', bucket.photos[index].filePath);
         fse.moveSync(bucket.photos[index].filePath, destinationPhotoPath, { overwrite: true });
-        action.progress = ((index + 1) / (bucket.count())) * 100;
+        action.progress = (((index + 1) / (bucket.count())) * 100).toFixed(2);
         if (index % 10 === 0) {
-          setTimeout(moveLoop, 500, action, bucket, index + 1);
+          setTimeout(moveLoop, 200, action, bucket, index + 1);
         } else {
           setTimeout(moveLoop, 0, action, bucket, index + 1);
         }
@@ -692,6 +686,70 @@ export class HomeComponent implements OnInit {
     };
 
     setTimeout(moveLoop, 100, this.actionInProgress, this.activeBucket, 0);
+  }
+
+  setTags() {
+    // const warnings = this.checkBeforeAction();
+    // if (warnings.length > 0) {
+      const modalRef = this.modalService.open(TagsModalContent, { centered: true });
+      modalRef.result.then((result) => {
+        console.log(`Closed with: ${result}`);
+
+        if (result.mode === 'add_tags') {
+          this.performSetTags('+=', result.tags);
+        }
+
+        if (result.mode === 'set_tags') {
+          this.performSetTags('=', result.tags);
+        }
+
+        if (result.mode === 'remove_tags') {
+          this.performSetTags('-=', result.tags);
+        }
+      }, (reason) => {
+        console.log(`Dismissed ${reason}`);
+      });
+  }
+
+  performSetTags(mode: string, tags: Array<String>) {
+    this.actionInProgress = new Action('Updating tags in progress', 0);
+
+    const setTagsLoop = (action, bucket, index) => {
+      if (index >= bucket.count()) {
+        this.actionInProgress = null;
+        this.alert = {type: 'info', message: 'Updating tags operation has completed successfully'};
+        this.readTags(this.photoPath);
+        return;
+      }
+      try {
+        let fileToUpdate;
+        if (this.useDestination === 'no') {
+          fileToUpdate = bucket.photos[index].filePath;
+        } else {
+          fileToUpdate = `${this.destinationPath}\\${bucket.photos[index].name}`;
+        }
+
+        console.log('updating tags', fileToUpdate);
+        this.updateAttribute(new FileAttribute('Keywords', tags, true, true), fileToUpdate, mode)
+          .then(() => {
+            action.progress = (((index + 1) / (bucket.count())) * 100).toFixed(2);
+            // if (index % 10 === 0) {
+            //   setTimeout(setTagsLoop, 500, action, bucket, index + 1);
+            // } else {
+              setTimeout(setTagsLoop, 0, action, bucket, index + 1);
+            // }
+          })
+          .catch(e => {
+            this.actionInProgress = null;
+            this.alert = {type: 'danger', message: e.message};
+          });
+      } catch (e) {
+        this.actionInProgress = null;
+        this.alert = {type: 'danger', message: e.message};
+      }
+    };
+
+    setTimeout(setTagsLoop, 100, this.actionInProgress, this.activeBucket, 0);
   }
 
   allSelected() {
@@ -814,11 +872,6 @@ class Action {
 }
 
 class FileAttribute {
-  // name: string;
-  // value: string;
-  // multivalue: boolean;
-  // editable: boolean;
-
   constructor(public name: string, public value, public multivalue: boolean, public editable: boolean) {}
 }
 

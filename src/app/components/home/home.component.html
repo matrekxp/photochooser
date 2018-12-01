@@ -7,7 +7,7 @@
       <div class="card border-dark mb-3">
 
         <div class="card-header">Photos</div>
-        <div class="card-body text-dark">
+        <div class="card-body text-dark" style="height: 600px">
           <tree-root #photoTree [nodes]="nodes" [options]="options" (focus)="onFocus($event)"
                      (activate)="onActivate($event)" (deactivate)="onDeactivate($event)" (updateData)="update()">
             <ng-template #treeNodeTemplate let-node let-index="index" style="width: 100%">
@@ -90,7 +90,7 @@
               <div class="col-4 image-preview">
                 <img [src]="photoPath" [style.max-height.px]="screenHeight"/>
               </div>
-              <div class="col-8">
+              <div class="col-8" *ngIf="photo.isFile">
                 <div *ngFor="let attribute of attributes">
                   <mat-form-field *ngIf="attribute.editable && attribute.multivalue" style="width: 80%;">
                     <mat-chip-list #chipList>
@@ -105,7 +105,7 @@
                   </mat-form-field>
                   <input *ngIf="attribute.editable && !attribute.multivalue" [ngModel]="attribute.value"/>
                   <li *ngIf="!attribute.editable">{{attribute.name}} : {{attribute.value}}</li>
-                  <button *ngIf="attribute.editable" type="submit" class="btn btn-outline-dark btn-sm" style="margin-top: 20px;float:right" (click)="updateAttribute(attribute)">Update</button>
+                  <button *ngIf="attribute.editable" type="submit" class="btn btn-outline-dark btn-sm" style="margin-top: 20px;float:right" (click)="updateAttribute(attribute, photoPath)">Update</button>
                 </div>
 
                 <!--<button mat-mini-fa color="primary" style="float:right; margin-right: 20px">-->
@@ -132,15 +132,33 @@
             </div>
 
             <div class="form-group row">
+              <div class="col-12">
+                <label>Use destination</label>
+                <div class="input-group mb-3">
+                  <div class="btn-group btn-group-toggle" ngbRadioGroup name="radioBasic" [(ngModel)]="useDestination">
+                    <label ngbButtonLabel class="btn-outline-secondary">
+                      <input ngbButton type="radio" value="yes">Yes
+                    </label>
+                    <label ngbButtonLabel class="btn-outline-secondary">
+                      <input ngbButton type="radio" value="no">No
+                    </label>
+                  </div>
+                </div>
+                <hr>
+              </div>
+            </div>
+
+            <div class="form-group row">
+
               <!--<ngbd-modal-basic></ngbd-modal-basic>-->
               <div class="col-12">
-                <div class="btn-group" role="group" aria-label="Basic example">
+                <div class="btn-group d-flex justify-content-center" role="group" aria-label="Basic example">
                   <button type="button" class="btn btn-secondary" [disabled]="!activeBucket || activeBucket.isEmpty() || actionInProgress" (click)="copy()">Copy</button>
                   <button type="button" class="btn btn-secondary" [disabled]="!activeBucket || activeBucket.isEmpty() || actionInProgress" (click)="move()">Move...</button>
                   <button type="button" class="btn btn-secondary" [disabled]="true || !activeBucket || activeBucket.isEmpty() || actionInProgress">Remove</button>
                   <button type="button" class="btn btn-secondary" [disabled]="!activeBucket || activeBucket.isEmpty() || actionInProgress" (click)="showBucket()">Show</button>
                   <button type="button" class="btn btn-secondary" [disabled]="!activeBucket || activeBucket.isEmpty() || actionInProgress" (click)="emptyBucket()">Empty</button>
-                  <button type="button" class="btn btn-secondary" [disabled]="true || !activeBucket || activeBucket.isEmpty() || actionInProgress">Tags</button>
+                  <button type="button" class="btn btn-secondary" [disabled]="!activeBucket || activeBucket.isEmpty() || actionInProgress" (click)="setTags()">Tags</button>
                   <button type="button" class="btn btn-secondary" [disabled]="!activeBucket ||!this.allSelected() || actionInProgress" (click)="addUnselected()">Add unselected</button>
                   <button type="button" class="btn btn-secondary" [disabled]="true || !activeBucket || activeBucket.isEmpty() || actionInProgress">Mark as seen</button>
                 </div>
@@ -152,7 +170,7 @@
           <div class="row justify-content-center" >
             <div class="col-3 bucket alert" [ngClass]="getBucketClass(bucket)" *ngFor="let bucket of buckets" (click)="activeBucket = bucket">
               <p style="text-align: center">{{bucket.name}}</p>
-              <div style="text-align: center;vertical-align: middle;line-height: 35px;">
+              <div style="text-align: center;vertical-align: middle;line-height: 20px;">
                 <p>{{bucket.countFiles()}} photos</p>
                 <p>{{bucket.countDirs()}} dirs</p>
               </div>
@@ -170,7 +188,8 @@
     </div>
     <div class="col-12" *ngIf="fullScreenMode">
       <div class="image">
-        <img [src]="photoPath" [style.max-height.px]="screenHeight"/>
+        <img *ngIf="!reachedEnd" [src]="photoPath" [style.max-height.px]="screenHeight"/>
+        <span *ngIf="reachedEnd">No more files to view</span>
       </div>
     </div>
   </div>

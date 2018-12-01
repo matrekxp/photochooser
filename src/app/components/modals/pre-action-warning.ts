@@ -1,8 +1,8 @@
-import { Component, Input } from "@angular/core";
-import { NgbActiveModal} from "@ng-bootstrap/ng-bootstrap";
+import { Component, Input } from '@angular/core';
+import { NgbActiveModal} from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
-  selector: "pre-action-warning",
+  selector: 'pre-action-warning',
   template: `
     <div class="modal-header">
       <h4 class="modal-title">{{name}} action</h4>
@@ -32,9 +32,6 @@ export class PreActionWarningModalContent {
   constructor(public activeModal: NgbActiveModal) {}
 
   relativePath(photoPath) {
-    console.log("photoPath", photoPath);
-    console.log("sourceDir", this.sourceDir);
-    console.log("last index", photoPath.lastIndexOf(this.sourceDir));
     return photoPath.substring(this.sourceDir.length, photoPath.length);
   }
 }

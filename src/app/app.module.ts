@@ -19,6 +19,7 @@ import { HttpClientModule, HttpClient } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
 
 import { PreActionWarningModalContent } from './components/modals/pre-action-warning';
+import { TagsModalContent } from './components/modals/tags';
 
 
 // NG Translate
@@ -47,9 +48,10 @@ export function HttpLoaderFactory(http: HttpClient) {
     AppComponent,
     HomeComponent,
     WebviewDirective,
-    PreActionWarningModalContent
+    PreActionWarningModalContent,
+    TagsModalContent
   ],
-  entryComponents: [PreActionWarningModalContent],
+  entryComponents: [PreActionWarningModalContent, TagsModalContent],
   exports: [MatFormFieldModule, MatButtonModule, MatIconModule, MatChipsModule],
   imports: [
     MatFormFieldModule,

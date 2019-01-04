@@ -1,11 +1,10 @@
 {
-  "name": "PhotoChooser",
+  "name": "PhotoOrganizer",
   "version": "1.0.4",
-  "description": "PhotoChooser v1.0",
+  "description": "Photo Organizer v1.0.4",
   "homepage": "https://github.com/maximegris/angular-electron",
   "author": {
-    "name": "Maxime GRIS",
-    "email": "maxime.gris@gmail.com"
+    "name": "Mateusz Skalski"
   },
   "keywords": [
     "angular",

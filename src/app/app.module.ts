@@ -34,6 +34,7 @@ import { WebviewDirective } from './directives/webview.directive';
 
 import { AppComponent } from './app.component';
 import { HomeComponent } from './components/home/home.component';
+import { StatusComponent } from './components/home/status/status.component';
 
 
 
@@ -49,7 +50,8 @@ export function HttpLoaderFactory(http: HttpClient) {
     HomeComponent,
     WebviewDirective,
     PreActionWarningModalContent,
-    TagsModalContent
+    TagsModalContent,
+    StatusComponent
   ],
   entryComponents: [PreActionWarningModalContent, TagsModalContent],
   exports: [MatFormFieldModule, MatButtonModule, MatIconModule, MatChipsModule],

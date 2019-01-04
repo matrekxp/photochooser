@@ -24,10 +24,10 @@ const child = require('child_process').execFile;
 })
 export class HomeComponent implements OnInit {
 
-  private static EMPTY_ALERT: IAlert = {type: '', message: ''};
-  get EMPTY_ALERT() {
-    return HomeComponent.EMPTY_ALERT;
-  }
+  public static EMPTY_ALERT: IAlert = {type: '', message: ''};
+  // public static get EMPTY_ALERT() {
+  //   return HomeComponent.EMPTY_ALERT;
+  // }
 
   @ViewChild('photoTree') treeComponent: TreeComponent;
 
@@ -38,8 +38,8 @@ export class HomeComponent implements OnInit {
   editableTags = ['Keywords'];
   readonly separatorKeysCodes: number[] = [ENTER, COMMA];
 
-  sourcePath = '/Users/mskalski/dev/my_projects/PhotoViewer/photo-viewer/src/main/resources/';
-  destinationPath = '/Users/mskalski/Desktop';
+  sourcePath = '';
+  destinationPath = '';
   nodes: Array<File> = [];
   photoPath = '';
   photo: File;
@@ -50,7 +50,7 @@ export class HomeComponent implements OnInit {
   showBucketMode = false;
   fullScreenMode = false;
   reachedEnd = false;
-  canGo: boolean = true;
+  canGo = true;
   useDestination = 'no';
 
   actionMapping: IActionMapping = {
@@ -60,12 +60,8 @@ export class HomeComponent implements OnInit {
         alert(`context menu for ${node.data.name}`);
       },
       dblClick: (tree, node, $event) => {
-        // this.fullScreenMode = true;
-        // const currentWindow = remote.getCurrentWindow();
-        // currentWindow.setFullScreen(true);
       },
       click: (tree, node, $event) => {
-        console.log('mouse click is shift', $event.shiftKey);
         this.photoPath = 'file:///' + node.data.filePath;
         TREE_ACTIONS.FOCUS(tree, node, $event);
       }
@@ -293,9 +289,18 @@ export class HomeComponent implements OnInit {
       }
     });
 
-    keyShortcuts.register(currentWindow, 'F1', () => this.moveToBucket(0));
-    keyShortcuts.register(currentWindow, 'F2', () => this.moveToBucket(1));
-    keyShortcuts.register(currentWindow, 'F3', () => this.moveToBucket(2));
+    keyShortcuts.register(currentWindow, 'F1', () => {
+      this.activeBucket = this.buckets[0];
+      this.moveToBucket(0);
+    });
+    keyShortcuts.register(currentWindow, 'F2', () => {
+      this.activeBucket = this.buckets[1];
+      this.moveToBucket(1);
+    });
+    keyShortcuts.register(currentWindow, 'F3', () => {
+      this.activeBucket = this.buckets[2];
+      this.moveToBucket(2);
+    });
 
     this.buckets = [
       new Bucket(0, 'Dobre', 'success'),
@@ -595,7 +600,7 @@ export class HomeComponent implements OnInit {
         this.actionInProgress = null;
         return;
       }
-      fse.copy(bucket.photos[index].filePath, this.destinationPath + '/' + bucket.photos[index].name);
+      fse.copySync(bucket.photos[index].filePath, this.destinationPath + '/' + bucket.photos[index].name);
       action.progress = (((index + 1) / (bucket.count())) * 100).toFixed(2);
 
       if (index % 10 === 0) {
@@ -782,9 +787,6 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  closeAlert() {
-    this.alert = HomeComponent.EMPTY_ALERT;
-  }
 }
 
 export interface IAlert {
@@ -826,16 +828,10 @@ class Bucket {
   }
 
   clear() {
-    console.log('photos before clear', this.photos);
-
     const copy = this.photos.map(x => Object.assign({}, x));
-
-    console.log('after copy', copy);
 
     this.photos.forEach(p => p.bucket = null);
     this.photos = [];
-
-    console.log('after clear', copy);
 
     return copy;
   }

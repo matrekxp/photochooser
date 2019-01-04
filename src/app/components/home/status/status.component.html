@@ -1,0 +1,6 @@
+<ngb-alert *ngIf="alert != EMPTY_ALERT && !actionInProgress" [type]="alert.type" (close)="closeAlert()" style="margin-top: 20px">{{alert.message}}</ngb-alert>
+
+<span style="margin-right: 10px">{{actionInProgress?.name}}</span>
+<div class="progress" *ngIf="actionInProgress">
+  <div class="progress-bar" role="progressbar" [style.width]="actionInProgress.progress + '%'" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">{{actionInProgress.progress}} %</div>
+</div>

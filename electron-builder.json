@@ -1,5 +1,5 @@
 {
-  "productName": "PhotoChooser",
+  "productName": "PhotoOrganizer",
   "directories": {
     "output": "release/",
     "buildResources": "build"

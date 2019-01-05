@@ -1,18 +1,18 @@
-import {ApplicationRef, Component, HostListener, OnInit, ViewChild} from "@angular/core";
-import {COMMA, ENTER} from "@angular/cdk/keycodes";
-import * as fs from "fs";
-import * as fse from "fs-extra";
-import {IActionMapping, ITreeOptions, KEYS, TREE_ACTIONS, TreeComponent, TreeModel} from "angular-tree-component";
-import * as keyShortcuts from "electron-localshortcut";
-import {remote} from "electron";
-import * as storage from "electron-json-storage/lib/storage";
-import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
-import {PreActionWarningModalContent} from "../modals/pre-action-warning";
-import {TagsModalContent} from "../modals/tags";
-import * as path from "path";
+import {ApplicationRef, Component, HostListener, OnInit, ViewChild} from '@angular/core';
+import {COMMA, ENTER} from '@angular/cdk/keycodes';
+import * as fs from 'fs';
+import * as fse from 'fs-extra';
+import {IActionMapping, ITreeOptions, KEYS, TREE_ACTIONS, TreeComponent, TreeModel} from 'angular-tree-component';
+import * as keyShortcuts from 'electron-localshortcut';
+import {remote} from 'electron';
+import * as storage from 'electron-json-storage/lib/storage';
+import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
+import {PreActionWarningModalContent} from '../modals/pre-action-warning';
+import {TagsModalContent} from '../modals/tags';
+import * as path from 'path';
 
-import {AppConfig} from "../../../environments/environment";
-import {MatChipInputEvent} from "@angular/material";
+import {AppConfig} from '../../../environments/environment';
+import {MatChipInputEvent} from '@angular/material';
 
 const app = remote.app;
 const child = require('child_process').execFile;
@@ -781,7 +781,7 @@ export class HomeComponent implements OnInit {
             // if (index % 10 === 0) {
             //   setTimeout(setTagsLoop, 500, action, bucket, index + 1);
             // } else {
-              setTimeout(setTagsLoop, 0, action, bucket, index + 1);
+              setTimeout(setTagsLoop, 250, action, bucket, index + 1);
             // }
           })
           .catch(e => {
@@ -808,8 +808,6 @@ export class HomeComponent implements OnInit {
   allSelected() {
     const flatten = [];
     this.flatten(this.nodes, flatten);
-
-    // console.log('flatten', flatten);
 
     return flatten.filter(p => p.isFile).some(p => p.bucket === null || p.bucket === undefined);
   }

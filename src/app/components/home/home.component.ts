@@ -1,18 +1,18 @@
-import {ApplicationRef, Component, HostListener, OnInit, ViewChild} from '@angular/core';
-import {COMMA, ENTER} from '@angular/cdk/keycodes';
-import * as fs from 'fs';
-import * as fse from 'fs-extra';
-import {IActionMapping, ITreeOptions, KEYS, TREE_ACTIONS, TreeComponent, TreeModel} from 'angular-tree-component';
-import * as keyShortcuts from 'electron-localshortcut';
-import {remote} from 'electron';
-import * as storage from 'electron-json-storage/lib/storage';
-import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
-import {PreActionWarningModalContent} from '../modals/pre-action-warning';
-import {TagsModalContent} from '../modals/tags';
-import * as path from 'path';
+import {ApplicationRef, Component, HostListener, OnInit, ViewChild} from "@angular/core";
+import {COMMA, ENTER} from "@angular/cdk/keycodes";
+import * as fs from "fs";
+import * as fse from "fs-extra";
+import {IActionMapping, ITreeOptions, KEYS, TREE_ACTIONS, TreeComponent, TreeModel} from "angular-tree-component";
+import * as keyShortcuts from "electron-localshortcut";
+import {remote} from "electron";
+import * as storage from "electron-json-storage/lib/storage";
+import {NgbModal} from "@ng-bootstrap/ng-bootstrap";
+import {PreActionWarningModalContent} from "../modals/pre-action-warning";
+import {TagsModalContent} from "../modals/tags";
+import * as path from "path";
 
-import {AppConfig} from '../../../environments/environment';
-import {MatChipInputEvent} from '@angular/material';
+import {AppConfig} from "../../../environments/environment";
+import {MatChipInputEvent} from "@angular/material";
 
 const app = remote.app;
 const child = require('child_process').execFile;
@@ -91,39 +91,43 @@ export class HomeComponent implements OnInit {
         this.photo = this.currentPhoto;
         this.photoPath = 'file:///' + $event.node.data.filePath;
 
-        if (process.platform === 'win32') {
-          if (this.photo.isFile) {
-            this.readTags($event.node.data.filePath);
-          }
+        if (this.photo.isFile) {
+          this.readTags($event.node.data.filePath);
         }
-
       }
-    }, 350);
+    }, 150);
   }
 
   readTags(photoPath) {
-    const opt = ['-Keywords', '-ImageSize', '-CreateDate', '-FileSize', photoPath.replace(/file:\/\/\//g, '').replace(/\//g, '\\')];
-
+    let options = [];
     let executablePath: String;
-    if (AppConfig.production) {
-      executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+
+    if (process.platform === 'win32') {
+      options = ['-Keywords', '-ImageSize', '-CreateDate', '-FileSize', photoPath.replace(/file:\/\/\//g, '').replace(/\//g, '\\')];
+      if (AppConfig.production) {
+        executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+      } else {
+        executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
+      }
     } else {
-      executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
+      options = ['-Keywords', '-ImageSize', '-CreateDate', '-FileSize', '-MDItemUserTags', photoPath.replace(/file:\/\/\//g, '')];
+      executablePath = 'exiftool';
     }
 
-    child(executablePath, opt, (err, data) => {
+    child(executablePath, options, (err, data) => {
       if (err) {
         console.error(err);
         return;
       }
 
       const lines = data.toString().match(/[^\r\n]+/g);
-      this.attributes = lines.filter(l => l.startsWith('Keywords')
+      console.log('tags', lines);
+      this.attributes = lines.filter(l => l.startsWith('Keywords') || l.startsWith('MD Item User Tags')
         || l.startsWith('Image Size') || l.startsWith('Create Date') || l.startsWith('File Size')).map(l => {
 
         const name = l.substr(0, l.indexOf(':'));
 
-        let value = l.substr(l.indexOf(':') + 1, name.length);
+        let value = l.substr(l.indexOf(':') + 1, l.length);
         const isEditable = this.editableTags.some(a => name.startsWith(a));
         const isMultiValue = isEditable;
 
@@ -143,24 +147,27 @@ export class HomeComponent implements OnInit {
   }
 
   updateAttribute(attribute, photoPath, mode = '=') {
+    let executablePath: String;
+
+    if (process.platform === 'win32') {
+      if (AppConfig.production) {
+        executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
+      } else {
+        executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
+      }
+    } else {
+      executablePath = 'exiftool';
+    }
+
     let opt = ['-overwrite_original'];
 
-    if (attribute.value.length === 0) {
-      opt = opt.concat('-' + attribute.name + '=');
-    } else {
-      opt = opt.concat(attribute.value.map(v => '-' + attribute.name + mode + v.trim()));
-    }
+    opt = this.addAttribute(attribute, opt, mode);
+
     opt = opt.concat(['-m', '-r', photoPath.replace(/file:\/\/\//g, '')]);
+
     console.log('options', opt);
 
-    let executablePath: String;
-    if (AppConfig.production) {
-      executablePath = path.join(app.getAppPath(), '..', 'extras/exiftool.exe');
-    } else {
-      executablePath = path.join(app.getAppPath(), 'extras/exiftool.exe');
-    }
-
-    const promise = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
 
       child(executablePath, opt, (err, data) => {
         if (err) {
@@ -170,11 +177,30 @@ export class HomeComponent implements OnInit {
         }
 
         console.log(data.toString());
-        resolve();
+
+        if (attribute.name.trim() === 'Keywords') {
+          const copy = {...attribute};
+          copy.name = 'MDItemUserTags';
+          this.updateAttribute(copy, photoPath, mode)
+            .then(() => {
+              resolve();
+            }).catch((error) => {
+            reject(error);
+          });
+        } else {
+          resolve();
+        }
       });
     });
+  }
 
-    return promise;
+  private addAttribute(attribute, opt, mode) {
+    if (attribute.value.length === 0) {
+      opt = opt.concat('-' + attribute.name + '=');
+    } else {
+      opt = opt.concat(attribute.value.map(v => '-' + attribute.name + mode + v.trim()));
+    }
+    return opt;
   }
 
   addAttributeValue(attribute: FileAttribute, event: MatChipInputEvent): void {
@@ -368,31 +394,40 @@ export class HomeComponent implements OnInit {
     }
     this.canGo = false;
 
-    setTimeout(() => {this.canGo = true;}, 75);
+    setTimeout(() => {this.canGo = true; }, 75);
 
     const treeModel: TreeModel = this.treeComponent.treeModel;
     const focusedNode = treeModel.getFocusedNode();
 
-    this.reachedEnd = false;
+    if (!this.reachedEnd || this.shouldGoToNextNode(focusedNode)) {
+      this.reachedEnd = false;
 
-    if (focusedNode) {
-      focusedNode.expandAll();
-      const previousNode = focusedNode.findPreviousNode();
+      if (focusedNode) {
+        focusedNode.expandAll();
+        const previousNode = focusedNode.findPreviousNode();
 
-      treeModel.focusPreviousNode();
+        treeModel.focusPreviousNode();
 
-      this.reachedEnd = !previousNode;
+        this.reachedEnd = !previousNode;
 
-      if (previousNode && (
-        (!this.showBucketMode && !previousNode.data.isFile || !this.isImage(previousNode.data)) ||
-        (this.showBucketMode && previousNode.data.bucket !== this.activeBucket)
-      )) {
-        this.up(true);
+        if (this.shouldGoToNextNode(previousNode)) {
+          this.up(true);
+        }
+      } else {
+        treeModel.focusPreviousNode();
       }
+
     } else {
-      treeModel.focusPreviousNode();
+      this.reachedEnd = false;
     }
 
+  }
+
+  private shouldGoToNextNode(node) {
+    return node && (
+      (!this.showBucketMode && !node.data.isFile || !this.isImage(node.data)) ||
+      (this.showBucketMode && node.data.bucket !== this.activeBucket)
+    );
   }
 
   isImage(file: File) {
@@ -405,26 +440,29 @@ export class HomeComponent implements OnInit {
     }
     this.canGo = false;
 
-    setTimeout(() => {this.canGo = true;}, 75);
+    setTimeout(() => {this.canGo = true; }, 75);
 
     const treeModel: TreeModel = this.treeComponent.treeModel;
     const focusedNode = treeModel.getFocusedNode();
 
-    if (focusedNode) {
-      focusedNode.expandAll();
-      const nextNode = focusedNode.findNextNode();
-      treeModel.focusNextNode();
+    if (!this.reachedEnd || this.shouldGoToNextNode(focusedNode)) {
+      this.reachedEnd = false;
+      if (focusedNode) {
+        focusedNode.expandAll();
+        const nextNode = focusedNode.findNextNode();
+        treeModel.focusNextNode();
 
-      this.reachedEnd = !nextNode;
+        this.reachedEnd = !nextNode;
 
-      if (nextNode && (
-        (!this.showBucketMode && !nextNode.data.isFile) ||
-        (this.showBucketMode && nextNode.data.bucket !== this.activeBucket)
-      )) {
-        this.down(true);
+        if (this.shouldGoToNextNode(nextNode)) {
+          this.down(true);
+        }
+      } else {
+        treeModel.focusNextNode();
       }
+
     } else {
-      treeModel.focusNextNode();
+      this.reachedEnd = false;
     }
 
   }
@@ -433,6 +471,8 @@ export class HomeComponent implements OnInit {
   }
 
   private reloadPhotos() {
+    this.nodes = [];
+
     const files = this.loadFileTree(this.sourcePath);
 
     console.log('loaded files:', files);
@@ -454,17 +494,17 @@ export class HomeComponent implements OnInit {
     const flattenNodes: Array<File> = [];
     this.flatten(this.nodes, flattenNodes);
 
-    console.log('flatten photos', flattenNodes);
+    // console.log('flatten photos', flattenNodes);
 
     this.buckets.forEach(b => {
       const photos = b.clear();
-      console.log('photos from clear method', photos);
+      // console.log('photos from clear method', photos);
       photos.forEach(p => {
 
         const file = flattenNodes.find(n => p.filePath === n.filePath);
-        console.log('found file from flatten nodes', file);
+        // console.log('found file from flatten nodes', file);
         if (file) {
-          console.log('adding file', file);
+          // console.log('adding file', file);
           file.bucket = b;
           b.add(file);
         }
@@ -731,7 +771,7 @@ export class HomeComponent implements OnInit {
         if (this.useDestination === 'no') {
           fileToUpdate = bucket.photos[index].filePath;
         } else {
-          fileToUpdate = `${this.destinationPath}\\${bucket.photos[index].name}`;
+          fileToUpdate = this.fix(`${this.destinationPath}\\${bucket.photos[index].name}`);
         }
 
         console.log('updating tags', fileToUpdate);
@@ -755,6 +795,14 @@ export class HomeComponent implements OnInit {
     };
 
     setTimeout(setTagsLoop, 100, this.actionInProgress, this.activeBucket, 0);
+  }
+
+  private fix(pathToFix) {
+    if (process.platform === 'win32') {
+      return pathToFix.replace(/\//g, '\\');
+    } else {
+      return pathToFix.replace(/\\/g, '\/');
+    }
   }
 
   allSelected() {

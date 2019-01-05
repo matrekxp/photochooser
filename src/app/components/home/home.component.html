@@ -26,10 +26,27 @@
       <div class="card border-dark">
         <div class="card-body">
           <form>
-            <div class="form-group ">
+            <div class="form-group">
               <label for="destinationPath">Source path</label>
-              <div style="float: right;">
-                <button type="submit" class="btn btn-outline-dark btn-sm" style="margin-top: -10px" (click)="saveSettings()">Save</button>
+              <div class="float-right top-buttons">
+
+                <button mat-button (click)="reload()">
+                  <mat-icon>refresh</mat-icon>
+                  Refresh
+                </button>
+
+                <div class="btn-group btn-group-sm btn-group-toggle" ngbRadioGroup name="radioBasic"
+                     [(ngModel)]="useDestination">
+                  <label ngbButtonLabel class="btn-outline-secondary">
+                    <input ngbButton type="radio" value="no">Source
+                  </label>
+                  <label ngbButtonLabel class="btn-outline-secondary">
+                    <input ngbButton type="radio" value="yes">Dest
+                  </label>
+                </div>
+
+
+                <button type="submit" class="btn btn-outline-dark btn-sm" (click)="saveSettings()">Save</button>
               </div>
               <div class="input-group mb-3">
                 <div class="custom-file" ngbTooltip="{{sourcePath}}" tooltipClass="file-path-tooltip">
@@ -50,47 +67,11 @@
                 </div>
               </div>
             </div>
-            <!--<fieldset class="form-group">-->
-            <!--<div class="row">-->
-            <!--<legend class="col-form-label col-sm-3 pt-0">Radios</legend>-->
-            <!--<div class="col-sm-9">-->
-            <!--<div class="form-check">-->
-            <!--<input class="form-check-input" type="radio" name="gridRadios" id="gridRadios1" value="option1" checked>-->
-            <!--<label class="form-check-label" for="gridRadios1">-->
-            <!--First radio-->
-            <!--</label>-->
-            <!--</div>-->
-            <!--<div class="form-check">-->
-            <!--<input class="form-check-input" type="radio" name="gridRadios" id="gridRadios2" value="option2">-->
-            <!--<label class="form-check-label" for="gridRadios2">-->
-            <!--Second radio-->
-            <!--</label>-->
-            <!--</div>-->
-            <!--<div class="form-check disabled">-->
-            <!--<input class="form-check-input" type="radio" name="gridRadios" id="gridRadios3" value="option3" disabled>-->
-            <!--<label class="form-check-label" for="gridRadios3">-->
-            <!--Third disabled radio-->
-            <!--</label>-->
-            <!--</div>-->
-            <!--</div>-->
-            <!--</div>-->
-            <!--</fieldset>-->
-            <!--<div class="form-group row">-->
-            <!--<div class="col-sm-2">Checkbox</div>-->
-            <!--<div class="col-sm-10">-->
-            <!--<div class="form-check">-->
-            <!--<input class="form-check-input" type="checkbox" id="gridCheck1">-->
-            <!--<label class="form-check-label" for="gridCheck1">-->
-            <!--Example checkbox-->
-            <!--</label>-->
-            <!--</div>-->
-            <!--</div>-->
-            <!--</div>-->
             <div class="row">
               <div class="col-4 image-preview">
                 <img [src]="photoPath" [style.max-height.px]="screenHeight"/>
               </div>
-              <div class="col-8" *ngIf="photo.isFile">
+              <div class="col-8" *ngIf="photo?.isFile">
                 <div *ngFor="let attribute of attributes">
                   <mat-form-field *ngIf="attribute.editable && attribute.multivalue" style="width: 80%;">
                     <mat-chip-list #chipList>
@@ -108,49 +89,11 @@
                   <button *ngIf="attribute.editable" type="submit" class="btn btn-outline-dark btn-sm" style="margin-top: 20px;float:right" (click)="updateAttribute(attribute, photoPath)">Update</button>
                 </div>
 
-                <!--<button mat-mini-fa color="primary" style="float:right; margin-right: 20px">-->
-                  <!--<mat-icon>done</mat-icon>-->
-                <!--</button>-->
-
-                <!--<mat-form-field style="width: 100%;">-->
-                <!--<mat-chip-list #chipList>-->
-                  <!--<mat-chip>Papadum</mat-chip>-->
-                  <!--<mat-chip>Naan</mat-chip>-->
-                  <!--<mat-chip>Dal</mat-chip>-->
-                  <!--<input placeholder="New fruit..."-->
-                         <!--[matChipInputFor]="chipList"-->
-                  <!--&gt;-->
-                <!--</mat-chip-list>-->
-<!---->
-                <!--</mat-form-field>-->
-                <!--<ul>-->
-                  <!--<li *ngFor="let attribute of attributes">
-                    {{attribute}}-->
-                <!--</li>-->
-                <!--</ul>-->
-              </div>
-            </div>
-
-            <div class="form-group row">
-              <div class="col-12">
-                <label>Use destination</label>
-                <div class="input-group mb-3">
-                  <div class="btn-group btn-group-toggle" ngbRadioGroup name="radioBasic" [(ngModel)]="useDestination">
-                    <label ngbButtonLabel class="btn-outline-secondary">
-                      <input ngbButton type="radio" value="yes">Yes
-                    </label>
-                    <label ngbButtonLabel class="btn-outline-secondary">
-                      <input ngbButton type="radio" value="no">No
-                    </label>
-                  </div>
-                </div>
-                <hr>
               </div>
             </div>
 
             <div class="form-group row">
 
-              <!--<ngbd-modal-basic></ngbd-modal-basic>-->
               <div class="col-12">
                 <div class="btn-group d-flex justify-content-center" role="group" aria-label="Basic example">
                   <button type="button" class="btn btn-secondary" [disabled]="!activeBucket || activeBucket.isEmpty() || actionInProgress" (click)="copy()">Copy</button>

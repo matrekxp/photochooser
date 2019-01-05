@@ -17,6 +17,14 @@
     border: solid 2px;
   }
 
+  .top-buttons {
+    padding-bottom: 5px;
+
+    & > *:not(:last-child) {
+      margin-right: 5px;
+    }
+  }
+
   div.image-preview {
     display: flex;
     align-items: center;

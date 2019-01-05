@@ -146,7 +146,7 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  updateAttribute(attribute, photoPath, mode = '=') {
+  updateAttribute(attribute, photoPaths, mode = '=') {
     let executablePath: String;
 
     if (process.platform === 'win32') {
@@ -163,7 +163,9 @@ export class HomeComponent implements OnInit {
 
     opt = this.addAttribute(attribute, opt, mode);
 
-    opt = opt.concat(['-m', '-r', photoPath.replace(/file:\/\/\//g, '')]);
+    opt = opt.concat(['-m', '-r']);
+
+    photoPaths.map(p => p.replace(/file:\/\/\//g, '')).forEach(p => opt = opt.concat(p));
 
     console.log('options', opt);
 
@@ -181,7 +183,7 @@ export class HomeComponent implements OnInit {
         if (attribute.name.trim() === 'Keywords') {
           const copy = {...attribute};
           copy.name = 'MDItemUserTags';
-          this.updateAttribute(copy, photoPath, mode)
+          this.updateAttribute(copy, photoPaths, mode)
             .then(() => {
               resolve();
             }).catch((error) => {
@@ -767,22 +769,22 @@ export class HomeComponent implements OnInit {
         return;
       }
       try {
-        let fileToUpdate;
-        if (this.useDestination === 'no') {
-          fileToUpdate = bucket.photos[index].filePath;
-        } else {
-          fileToUpdate = this.fix(`${this.destinationPath}\\${bucket.photos[index].name}`);
+        const filesToUpdate = [];
+
+        for (let i = 0; i < 10 && index < bucket.count(); i++) {
+          if (this.useDestination === 'no') {
+            filesToUpdate.push(this.fix(bucket.photos[index].filePath));
+          } else {
+            filesToUpdate.push(this.fix(`${this.destinationPath}\\${bucket.photos[index].name}`));
+          }
+          index = index + 1;
         }
 
-        console.log('updating tags', fileToUpdate);
-        this.updateAttribute(new FileAttribute('Keywords', tags, true, true), fileToUpdate, mode)
+        // console.log('updating tags', filesToUpdate);
+        this.updateAttribute(new FileAttribute('Keywords', tags, true, true), filesToUpdate, mode)
           .then(() => {
-            action.progress = (((index + 1) / (bucket.count())) * 100).toFixed(2);
-            // if (index % 10 === 0) {
-            //   setTimeout(setTagsLoop, 500, action, bucket, index + 1);
-            // } else {
-              setTimeout(setTagsLoop, 250, action, bucket, index + 1);
-            // }
+            action.progress = (((index) / (bucket.count())) * 100).toFixed(2);
+            setTimeout(setTagsLoop, 250, action, bucket, index);
           })
           .catch(e => {
             this.actionInProgress = null;
@@ -814,8 +816,6 @@ export class HomeComponent implements OnInit {
 
   addUnselected() {
     const treeModel: TreeModel = this.treeComponent.treeModel;
-
-    console.log('model:', treeModel);
 
     const add = (file: File) => {
       if (file.isFile && !file.bucket) {

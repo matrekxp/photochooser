@@ -86,7 +86,7 @@
                   </mat-form-field>
                   <input *ngIf="attribute.editable && !attribute.multivalue" [ngModel]="attribute.value"/>
                   <li *ngIf="!attribute.editable">{{attribute.name}} : {{attribute.value}}</li>
-                  <button *ngIf="attribute.editable" type="submit" class="btn btn-outline-dark btn-sm" style="margin-top: 20px;float:right" (click)="updateAttribute(attribute, photoPath)">Update</button>
+                  <button *ngIf="attribute.editable" type="submit" class="btn btn-outline-dark btn-sm" style="margin-top: 20px;float:right" (click)="updateAttribute(attribute, [photoPath])">Update</button>
                 </div>
 
               </div>
